@@ -5,55 +5,50 @@ const SCORE_MAP: { [key: number]: string } = {
     3: "Forty"
 };
 
-const TennisScoreCalculator = () => {
-    let scorePlayer1 = 0;
-    let scorePlayer2 = 0;
+type Score = { player1: number; player2: number };
 
-    const setScore = (player1Points: number, player2Points: number) => {
-        scorePlayer1 = player1Points;
-        scorePlayer2 = player2Points;
-    };
+type ScoreStrategy = {
+    appliesTo: (score: Score) => boolean;
+    format: (score: Score) => string;
+};
 
-    const scoreToString = (score: number): string => {
-        return SCORE_MAP[score];
+const leader = ({ player1, player2 }: Score): string => (player1 > player2 ? "1" : "2");
+
+const POINTS: ScoreStrategy = {
+    appliesTo: () => true,
+    format: ({ player1, player2 }) => `${SCORE_MAP[player1]}-${SCORE_MAP[player2]}`
+};
+
+const STRATEGIES: ScoreStrategy[] = [
+    {
+        appliesTo: ({ player1, player2 }) => player1 === 0 && player2 === 0,
+        format: () => "Love-All"
+    },
+    {
+        appliesTo: ({ player1, player2 }) => player1 === player2 && player1 >= 3,
+        format: () => "Deuce"
+    },
+    {
+        appliesTo: ({ player1, player2 }) =>
+            (player1 >= 4 || player2 >= 4) && Math.abs(player1 - player2) === 1,
+        format: (score) => `Advantage Player ${leader(score)}`
+    },
+    {
+        appliesTo: ({ player1, player2 }) =>
+            (player1 > 3 || player2 > 3) && Math.abs(player1 - player2) >= 2,
+        format: (score) => `Win for Player ${leader(score)}`
     }
+];
 
-    const isLoveAll = (): boolean => {
-        return scorePlayer1 === 0 && scorePlayer2 === 0;
-    };
-
-    const isDeuce = (): boolean => {
-        return scorePlayer1 === scorePlayer2 && scorePlayer1 >= 3;
-    };
-
-    const isAdvantage = (): boolean => {
-        return (scorePlayer1 >= 3 || scorePlayer2 >= 3) && Math.abs(scorePlayer1 - scorePlayer2) === 1;
-    };
-
-    const isWin = (): boolean => {
-        return (scorePlayer1 > 3 || scorePlayer2 > 3) && Math.abs(scorePlayer1 - scorePlayer2) >= 2;
-    };
-
-    const getScore = (): string => {
-        if (isLoveAll()) {
-            return "Love-All";
-        }
-        if (isDeuce()) {
-            return "Deuce";
-        }
-        if (isAdvantage()) {
-            return "Advantage Player " + (scorePlayer1 > scorePlayer2 ? "1" : "2");
-        }
-        if (isWin()) {
-            return "Win for Player " + (scorePlayer1 > scorePlayer2 ? "1" : "2");
-        }
-
-        return `${scoreToString(scorePlayer1)}-${scoreToString(scorePlayer2)}`;
-    };
+const TennisScoreCalculator = () => {
+    let score: Score = { player1: 0, player2: 0 };
 
     return {
-        setScore,
-        getScore
+        setScore: (player1Points: number, player2Points: number) => {
+            score = { player1: player1Points, player2: player2Points };
+        },
+        getScore: (): string =>
+            (STRATEGIES.find((strategy) => strategy.appliesTo(score)) ?? POINTS).format(score)
     };
 };
 
